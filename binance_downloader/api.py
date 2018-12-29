@@ -57,7 +57,6 @@ class BinanceAPI:
 
     def fetch_parallel(self):
         # Get earliest possible kline
-        # TODO: Locally cache earliest valid timestamp for Binance pairs
         earliest = earliest_valid_timestamp(self.symbol, self.interval)
         ms_start = max(self.start_time, earliest)
         ms_end = min(self.end_time, date_to_milliseconds("now"))

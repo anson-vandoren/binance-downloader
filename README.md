@@ -1,6 +1,8 @@
 Binance Downloader
 ==================
 
+[![Build Status](https://travis-ci.com/anson-vandoren/binance-downloader.svg?branch=master)](https://travis-ci.com/anson-vandoren/binance-downloader)
+
 Python tool to download Binance Candlestick (k-line) data from REST API
 
 Originally forked from [bullsignals/binance-downloader](https://github.com/bullsignals/binance-downloader),
@@ -9,7 +11,7 @@ of this project and allow others to contribute. At this point, I have re-written
 all the code from scratch, but would like to thank the original authors for their ideas
 that got me started.
 
-TravisCI status: [![Build Status](https://travis-ci.com/anson-vandoren/binance-downloader.svg?branch=master)](https://travis-ci.com/anson-vandoren/binance-downloader)
+
 
 Installation
 -----------
