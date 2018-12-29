@@ -8,6 +8,7 @@ type_stubs/
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info
 
 # Python virtualenv
 .Python

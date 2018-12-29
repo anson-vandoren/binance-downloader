@@ -3,54 +3,63 @@ Binance Downloader
 
 Python tool to download Binance Candlestick (k-line) data from REST API
 
-Master: [![Build Status](https://travis-ci.com/anson-vandoren/binance-downloader.svg?branch=master)](https://travis-ci.com/anson-vandoren/binance-downloader)
+Originally forked from [bullsignals/binance-downloader](https://github.com/bullsignals/binance-downloader),
+that project does not seem to be maintained any longer and I wanted to actually make use
+of this project and allow others to contribute. At this point, I have re-written almost
+all the code from scratch, but would like to thank the original authors for their ideas
+that got me started.
 
-Instalation
+TravisCI status: [![Build Status](https://travis-ci.com/anson-vandoren/binance-downloader.svg?branch=master)](https://travis-ci.com/anson-vandoren/binance-downloader)
+
+Installation
 -----------
 
-### LINUX
-- clone repository
+### Prerequisites
+You will need Poetry installed in order to install this package and run from the command line.
+Poetry is a Python package and dependency manager that makes installation and distribution
+really easy. Installation instructions [can be found here](https://poetry.eustace.io/docs/#installation)
+for macOS/Linux/Windows
+- Verify Poetry installation
+```console
+$ poetry --version
+Poetry 0.12.10
+```
+
+### Download and install
+- Clone the repository
 ```console
 $ git clone https://github.com/anson-vandoren/binance-downloader.git
 $ cd binance-downloader
 ```
-- activate your virtual enviroment and install dependencies (using python >= 3.5).
+- Activate your virtual environment and install dependencies (using python >= 3.5).
+> Poetry will try to automatically enable a virtual environment for you if it detects
+> you are not already using one
 
 ```console
-$ source /path-to-virtual-env/bin/activate
-$ pip3 install -r requirements.txt
-$ flit install --symlink
+$ poetry install
+Installing dependencies from lock file
+
+Package operations: 12 installs, 0 updates, 0 removals
+
+  - Installing six (1.12.0)
+  - Installing certifi (2008.11.29)
+  - Installing chardet (3.0.4)
+  - Installing idna (2.8)
+  - Installing numpy (1.15.4)
+  - Installing python-dateutil (2.7.5)
+  - Installing pytz (2018.7)
+  - Installing urllib3 (1.22)
+  - Installing logbook (1.4.1)
+  - Installing pandas (0.23.4)
+  - Installing requests (2.21.0)
+  - Installing tqdm (4.28.1)
+  - Installing binance-downloader (0.2.0)
 ```
 
-### WINDOWS
-
-- clone repository
-```console
-$ git clone https://github.com/anson-vandoren/binance-downloader.git
-$ cd binance-downloader
-```
-- activate your virtual enviroment and install dependencies (using python >= 3.5). 
-
-```console
-$ source /path-to-virtual-env/bin/activate
-$ pip install -r requirements.txt
-``` 
-
-To execute  ```'flit install --symlink'``` you need run command prompt as admin. 
-You can do that by:
-> Go to start -> All Programs -> Acessories -> Right click on Command Prompt and
-> select "Run as administrator"
-
-Then go to project directory, activate you virtual environment e execute the command.
-```console
-$ flit install --symlink
-```
-Now you can run the kline-binance command line. You don't need execute the command prompt as admin before do that.
 
 Using the Command Line Interface
 -----------------------------
 
-- Help
 ```console
 $  kline-binance --help
 usage: kline-binance [-h] [--start START] [--end END] [--output OUTPUT]
@@ -77,7 +86,10 @@ optional arguments:
 
 - Downloading data
 ```console
-$ kline-binance -i 1m -l 1500 -st 01/01/2016 -e 05/04/2018
+$ kline-binance ETHBTC 1m --start 2018-01-01 --end 2018-07-01
+100%|███████████████████████████████████████████████████████| 264000/264000 [00:14<00:00, 18821.01it/s]
+[2018-12-29 07:22:20.463615] NOTICE: binance_downloader.api: Done writing ./downloaded/2018-12-28_232217_ETHBTC_1m_klines.csv for 258351 lines
+[2018-12-29 07:22:20.463753] NOTICE: binance_downloader.cli: download finished successfully.
 ```
 
 License

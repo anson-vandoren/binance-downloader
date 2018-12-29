@@ -1,0 +1,127 @@
+[[package]]
+category = "main"
+description = "Python package for providing Mozilla's CA Bundle."
+name = "certifi"
+optional = false
+python-versions = "*"
+version = "2018.11.29"
+
+[[package]]
+category = "main"
+description = "Universal encoding detector for Python 2 and 3"
+name = "chardet"
+optional = false
+python-versions = "*"
+version = "3.0.4"
+
+[[package]]
+category = "main"
+description = "Internationalized Domain Names in Applications (IDNA)"
+name = "idna"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.8"
+
+[[package]]
+category = "main"
+description = "A logging replacement for Python"
+name = "logbook"
+optional = false
+python-versions = "*"
+version = "1.4.1"
+
+[[package]]
+category = "main"
+description = "NumPy: array processing for numbers, strings, records, and objects."
+name = "numpy"
+optional = false
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
+version = "1.15.4"
+
+[[package]]
+category = "main"
+description = "Powerful data structures for data analysis, time series, and statistics"
+name = "pandas"
+optional = false
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
+version = "0.23.4"
+
+[package.dependencies]
+numpy = ">=1.9.0"
+python-dateutil = ">=2.5.0"
+pytz = ">=2011k"
+
+[[package]]
+category = "main"
+description = "Extensions to the standard Python datetime module"
+name = "python-dateutil"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+version = "2.7.5"
+
+[package.dependencies]
+six = ">=1.5"
+
+[[package]]
+category = "main"
+description = "World timezone definitions, modern and historical"
+name = "pytz"
+optional = false
+python-versions = "*"
+version = "2018.7"
+
+[[package]]
+category = "main"
+description = "Python HTTP for Humans."
+name = "requests"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.21.0"
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+chardet = ">=3.0.2,<3.1.0"
+idna = ">=2.5,<2.9"
+urllib3 = ">=1.21.1,<1.25"
+
+[[package]]
+category = "main"
+description = "Python 2 and 3 compatibility utilities"
+name = "six"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+version = "1.12.0"
+
+[[package]]
+category = "main"
+description = "Fast, Extensible Progress Meter"
+name = "tqdm"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+version = "4.28.1"
+
+[[package]]
+category = "main"
+description = "HTTP library with thread-safe connection pooling, file post, and more."
+name = "urllib3"
+optional = false
+python-versions = "*"
+version = "1.22"
+
+[metadata]
+content-hash = "19cd94aba7dec8b90bdc68c75f39a4c70834a71ea0189990e2d459efb74de42f"
+python-versions = ">=3.5"
+
+[metadata.hashes]
+certifi = ["47f9c83ef4c0c621eaef743f133f09fa8a74a9b75f037e8624f83bd1b6626cb7", "993f830721089fef441cdfeb4b2c8c9df86f0c63239f06bd025a76a7daddb033"]
+chardet = ["84ab92ed1c4d4f16916e05906b6b75a6c0fb5db821cc65e70cbd64a3e2a5eaae", "fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691"]
+idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
+logbook = ["2a8f9c583d7247b6f9bea7945d1d1a1bcc516b78f0e2376942201f2283191a08", "32375ce706d04a46886f9818bb953e53e0eda636552d7c0a2e482dd670fa56db", "69b461abadb1582b72eeb0db1429545d8f9fc373c3421738f31df1956ac111b2", "78008531bca8105aae4c5a03338c4627eebbe3737bd57ab7e8ba09f134609ed5", "d07e4a01cfa03cfec83ad19044d122981788c88605f4d0295d56667746ee2a74", "ef2e03f6144fa9aa64b8ff69678e2206f7d6788d630156737f6d66e1b2c1d319", "f6ee2eb8c169595a0101fc72f8a5d2585db2ec0562a856b02be19f5ccf426e46"]
+numpy = ["0df89ca13c25eaa1621a3f09af4c8ba20da849692dcae184cb55e80952c453fb", "154c35f195fd3e1fad2569930ca51907057ae35e03938f89a8aedae91dd1b7c7", "18e84323cdb8de3325e741a7a8dd4a82db74fde363dce32b625324c7b32aa6d7", "1e8956c37fc138d65ded2d96ab3949bd49038cc6e8a4494b1515b0ba88c91565", "23557bdbca3ccbde3abaa12a6e82299bc92d2b9139011f8c16ca1bb8c75d1e95", "24fd645a5e5d224aa6e39d93e4a722fafa9160154f296fd5ef9580191c755053", "36e36b6868e4440760d4b9b44587ea1dc1f06532858d10abba98e851e154ca70", "3d734559db35aa3697dadcea492a423118c5c55d176da2f3be9c98d4803fc2a7", "416a2070acf3a2b5d586f9a6507bb97e33574df5bd7508ea970bbf4fc563fa52", "4a22dc3f5221a644dfe4a63bf990052cc674ef12a157b1056969079985c92816", "4d8d3e5aa6087490912c14a3c10fbdd380b40b421c13920ff468163bc50e016f", "4f41fd159fba1245e1958a99d349df49c616b133636e0cf668f169bce2aeac2d", "561ef098c50f91fbac2cc9305b68c915e9eb915a74d9038ecf8af274d748f76f", "56994e14b386b5c0a9b875a76d22d707b315fa037affc7819cda08b6d0489756", "73a1f2a529604c50c262179fcca59c87a05ff4614fe8a15c186934d84d09d9a5", "7da99445fd890206bfcc7419f79871ba8e73d9d9e6b82fe09980bc5bb4efc35f", "99d59e0bcadac4aa3280616591fb7bcd560e2218f5e31d5223a2e12a1425d495", "a4cc09489843c70b22e8373ca3dfa52b3fab778b57cf81462f1203b0852e95e3", "a61dc29cfca9831a03442a21d4b5fd77e3067beca4b5f81f1a89a04a71cf93fa", "b1853df739b32fa913cc59ad9137caa9cc3d97ff871e2bbd89c2a2a1d4a69451", "b1f44c335532c0581b77491b7715a871d0dd72e97487ac0f57337ccf3ab3469b", "b261e0cb0d6faa8fd6863af26d30351fd2ffdb15b82e51e81e96b9e9e2e7ba16", "c857ae5dba375ea26a6228f98c195fec0898a0fd91bcf0e8a0cae6d9faf3eca7", "cf5bb4a7d53a71bb6a0144d31df784a973b36d8687d615ef6a7e9b1809917a9b", "db9814ff0457b46f2e1d494c1efa4111ca089e08c8b983635ebffb9c1573361f", "df04f4bad8a359daa2ff74f8108ea051670cafbca533bb2636c58b16e962989e", "ecf81720934a0e18526177e645cbd6a8a21bb0ddc887ff9738de07a1df5c6b61", "edfa6fba9157e0e3be0f40168eb142511012683ac3dc82420bee4a3f3981b30e"]
+pandas = ["11975fad9edbdb55f1a560d96f91830e83e29bed6ad5ebf506abda09818eaf60", "12e13d127ca1b585dd6f6840d3fe3fa6e46c36a6afe2dbc5cb0b57032c902e31", "1c87fcb201e1e06f66e23a61a5fea9eeebfe7204a66d99df24600e3f05168051", "242e9900de758e137304ad4b5663c2eff0d798c2c3b891250bd0bd97144579da", "26c903d0ae1542890cb9abadb4adcb18f356b14c2df46e4ff657ae640e3ac9e7", "2e1e88f9d3e5f107b65b59cd29f141995597b035d17cc5537e58142038942e1a", "31b7a48b344c14691a8e92765d4023f88902ba3e96e2e4d0364d3453cdfd50db", "4fd07a932b4352f8a8973761ab4e84f965bf81cc750fb38e04f01088ab901cb8", "5b24ca47acf69222e82530e89111dd9d14f9b970ab2cd3a1c2c78f0c4fbba4f4", "647b3b916cc8f6aeba240c8171be3ab799c3c1b2ea179a3be0bd2712c4237553", "66b060946046ca27c0e03e9bec9bba3e0b918bafff84c425ca2cc2e157ce121e", "6efa9fa6e1434141df8872d0fa4226fc301b17aacf37429193f9d70b426ea28f", "be4715c9d8367e51dbe6bc6d05e205b1ae234f0dc5465931014aa1c4af44c1ba", "bea90da782d8e945fccfc958585210d23de374fa9294a9481ed2abcef637ebfc", "d318d77ab96f66a59e792a481e2701fba879e1a453aefeebdb17444fe204d1ed", "d785fc08d6f4207437e900ffead930a61e634c5e4f980ba6d3dc03c9581748c7", "de9559287c4fe8da56e8c3878d2374abc19d1ba2b807bfa7553e912a8e5ba87c", "f4f98b190bb918ac0bc0e3dd2ab74ff3573da9f43106f6dba6385406912ec00f", "f71f1a7e2d03758f6e957896ed696254e2bc83110ddbc6942018f1a232dd9dad", "fb944c8f0b0ab5c1f7846c686bc4cdf8cde7224655c12edcd59d5212cd57bec0"]
+python-dateutil = ["063df5763652e21de43de7d9e00ccf239f953a832941e37be541614732cdfc93", "88f9287c0174266bb0d8cedd395cfba9c58e87e5ad86b2ce58859bc11be3cf02"]
+pytz = ["31cb35c89bd7d333cd32c5f278fca91b523b0834369e757f4c5641ea252236ca", "8e0f8568c118d3077b46be7d654cc8167fa916092e28320cde048e54bfc9f1e6"]
+requests = ["502a824f31acdacb3a35b6690b5fbf0bc41d63a24a45c4004352b0242707598e", "7bf2a778576d825600030a110f3c0e3e8edc51dfaafe1c146e39a2027784957b"]
+six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
+tqdm = ["3c4d4a5a41ef162dd61f1edb86b0e1c7859054ab656b2e7c7b77e7fbf6d9f392", "5b4d5549984503050883bc126280b386f5f4ca87e6c023c5d015655ad75bdebb"]
+urllib3 = ["06330f386d6e4b195fbfc736b297f58c5a892e4440e54d294d7004e3a9bbea1b", "cc44da8e1145637334317feebd728bd869a35285b93cbb4cca2577da7e62db4f"]

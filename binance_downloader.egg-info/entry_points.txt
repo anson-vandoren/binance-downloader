@@ -1,0 +1,3 @@
+[console_scripts]
+kline-binance = binance_downloader.cli:main
+
