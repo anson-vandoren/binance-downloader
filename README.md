@@ -26,12 +26,12 @@ Poetry 0.12.10
 ```
 
 ### Download and install
-#####Clone the repository
+####Clone the repository
 ```console
 $ git clone https://github.com/anson-vandoren/binance-downloader.git
 $ cd binance-downloader
 ```
-##### Activate your virtual environment
+#### Activate your virtual environment
 > Poetry will try to automatically enable a virtual environment for you if it detects
 > you are not already using one
 
@@ -43,7 +43,7 @@ or
 $ workon binance-downloader
 ```
 
-#####Install dependencies
+####Install dependencies
 ```console
 $ poetry install
 Installing dependencies from lock file
@@ -68,7 +68,7 @@ Package operations: 12 installs, 0 updates, 0 removals
 
 Using the Command Line Interface
 -----------------------------
-#####Show available options
+####Show available options
 ```console
 $  kline-binance --help
 usage: kline-binance [-h] [--start START] [--end END] [--output OUTPUT]
@@ -93,7 +93,7 @@ optional arguments:
                        YMD
 ```
 
-#####Downloading data
+####Downloading data
 ```console
 $ kline-binance ETHBTC 1m --start 2018-01-01 --end 2018-07-01
 100%|███████████████████████████████████████████████████████| 264000/264000 [00:14<00:00, 18821.01it/s]
