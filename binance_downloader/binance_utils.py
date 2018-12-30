@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 from logbook import Logger
 
+from .db import Kline
 from .utils import json_to_cache, json_from_cache
 
 log = Logger(__name__)
@@ -248,29 +249,17 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
 def kline_df_from_flat_list(flat_list: List):
     df = pd.DataFrame(
         flat_list,
-        columns=[
-            "OpenTime",
-            "Open",
-            "High",
-            "Low",
-            "Close",
-            "Volume",
-            "CloseTime",
-            "qav",
-            "numTrades",
-            "tbbav",
-            "tbqav",
-            "ignore",
-        ],
+        columns=Kline.col_names()
     )
-    # Fix dates
-    df.OpenTime = pd.to_datetime(df.OpenTime, unit="ms")
-    df.CloseTime = pd.to_datetime(df.CloseTime, unit="ms")
     # Fix numeric values
-    for f in ["Open", "High", "Low", "Close", "Volume"]:
+    for f in Kline.col_names():
         df[f] = pd.to_numeric(df[f])
+    # Fix dates
+    df[Kline.OPEN_TIME] = pd.to_datetime(df[Kline.OPEN_TIME], unit="ms")
+    df[Kline.CLOSE_TIME] = pd.to_datetime(df[Kline.CLOSE_TIME], unit="ms")
+
     # Sort by interval open
-    df = df.sort_values("OpenTime")
+    df = df.sort_values(Kline.OPEN_TIME)
     # Remove duplicates (from interval overlaps)
-    df = df.drop_duplicates("OpenTime").reset_index(drop=True)
+    df = df.drop_duplicates(Kline.OPEN_TIME).reset_index(drop=True)
     return df
