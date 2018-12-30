@@ -44,8 +44,6 @@ class BinanceAPI:
         self.start_time, self.end_time = self._fill_dates(start_date, end_date)
 
         self.kline_df: Optional[pd.DataFrame] = None
-        self.download_successful = False
-        self.found_cached = False
 
     @rate_limited(max_per_sec)
     def fetch_blocks(self, start_end_times):
@@ -61,39 +59,40 @@ class BinanceAPI:
     def fetch_parallel(self):
         # Create list of all start and end timestamps
         ranges = self._get_chunk_ranges()
+        if not ranges:
+            log.warn(
+                f"There are no klines for {self.symbol} at {self.interval} "
+                f"intervals on Binance between {pd.to_datetime(self.start_time, unit='ms')} "
+                f"and {pd.to_datetime(self.end_time, unit='ms')}"
+            )
+            return
+
+        # Check if any needed chunks aren't already cached
         needed_ranges = self._uncached_ranges(ranges)
+        if not needed_ranges:
+            log.notice("All requested chunks already cached")
+            return
 
-        # Create workers for all needed requests and start them
+        # At least some chunks actually need to be downloaded
+        log.notice(f"Downloading {len(needed_ranges)} chunks...")
+
+        # Create workers for all needed requests and create iterator
         pool = ThreadPool()
-        # Fetch in parallel, but block until all requests are received
-
-        flat_results = []
-        it = pool.imap(self.fetch_blocks, needed_ranges)
-        # Prevent more tasks being added to the pool
-        pool.close()
+        results = pool.imap(self.fetch_blocks, needed_ranges)
+        pool.close()  # Prevent more tasks being added to the pool
 
         # Show progress meter
-        with tqdm(total=len(needed_ranges) * self.req_limit) as pbar:
-            for r in it:
+        with tqdm(total=len(needed_ranges) * self.req_limit, desc="Download ") as pbar:
+            flat_results = []
+            for result in results:
                 pbar.update(self.req_limit)
-                flat_results.extend(r)
+                flat_results.extend(result)
 
         # Block until all workers are done
         pool.join()
 
         self.kline_df = kline_df_from_flat_list(flat_results)
-        if len(self.kline_df) == 0 and not self.found_cached:
-            log.warn(
-                f"there are no k-lines for {self.symbol} at {self.interval} "
-                f"intervals on Binance between {pd.to_datetime(self.start_time, unit='ms')} "
-                f"and {pd.to_datetime(self.end_time, unit='ms')}"
-            )
-        elif self.found_cached:
-            log.info('Found cached results and did not download new')
-            return
-        else:
-            log.info("Done fetching in parallel")
-            self.download_successful = True
+        log.info(f'Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete.')
 
     def _uncached_ranges(self, desired_ranges):
 
@@ -103,7 +102,7 @@ class BinanceAPI:
         cached_df.set_index(Kline.OPEN_TIME, inplace=True)
         uncached_ranges = []
         for r in desired_ranges:
-            start, end = [pd.to_datetime(timestamp, unit='ms') for timestamp in r]
+            start, end = [pd.to_datetime(timestamp, unit="ms") for timestamp in r]
             try:
                 if len(cached_df.loc[start]) > 0 and len(cached_df.loc[end]) > 0:
                     continue
@@ -112,8 +111,9 @@ class BinanceAPI:
             except KeyError:
                 # Didn't find this row. Possibly missed before, or possibly no data
                 uncached_ranges.append(r)
-        log.notice(f'Found {len(desired_ranges) - len(uncached_ranges)} chunks already cached')
-        self.found_cached = uncached_ranges < desired_ranges
+        log.notice(
+            f"Found {len(desired_ranges) - len(uncached_ranges)} chunks already cached"
+        )
         return uncached_ranges
 
     def _get_chunk_ranges(self):
@@ -123,6 +123,16 @@ class BinanceAPI:
 
         period_start = self._get_valid_start()
         period_end = self._get_valid_end()
+
+        if period_start > self.start_time:
+            log.notice(
+                "First available kline starts on "
+                f"{pd.to_datetime(period_start, unit='ms')}"
+            )
+            if period_start >= period_end:
+                # No valid ranges due to later available start time, so return early
+                return ranges
+
         interval_ms = interval_to_milliseconds(self.interval)
 
         chunk_start = chunk_end = period_start
@@ -150,11 +160,6 @@ class BinanceAPI:
         earliest = earliest_valid_timestamp(self.symbol, self.interval)
 
         start = max(self.start_time, earliest)
-        if start > self.start_time:
-            log.notice(
-                f"Data not available to start on {pd.to_datetime(self.start_time, unit='ms')}, "
-                f"starting from {pd.to_datetime(start, unit='ms')} instead"
-            )
         return start
 
     def write_to_csv(self, output=None):
@@ -164,12 +169,9 @@ class BinanceAPI:
             directory with a timestamped filename based on symbol pair and interval
         :return: None
         """
-        if not self.download_successful:
+        if self.kline_df is None or len(self.kline_df) == 0:
             log.notice("Not writing to .csv since no data was received from API")
             return
-
-        if self.kline_df is None:
-            raise ValueError("Must read in data from Binance before writing to disk!")
 
         # Generate default file name/path if none given
         output = output or self.output_file
@@ -181,8 +183,24 @@ class BinanceAPI:
             )
         log.notice(f"Done writing {output} for {len(self.kline_df)} lines")
 
+    def progress_csv(self):
+        if self.kline_df is None or len(self.kline_df) == 0:
+            log.notice("Not writing to .csv since no data was received from API")
+            return
+        output = self.output_file
+        import numpy as np
+        ixs = np.array_split(self.kline_df.index, 100)
+        log.info(f'Writing CSV output to {output}')
+        for ix, subset in tqdm(enumerate(ixs), total=100, desc="Write CSV"):
+            if ix == 0:
+                self.kline_df.loc[subset].to_csv(output, mode='w', index=False, float_format="%.9f", header=list(Kline))
+            else:
+                self.kline_df.loc[subset].to_csv(output, mode='a', header=None, float_format="%.9f")
+
+        log.info(f'Done writing {len(self.kline_df)} lines to CSV')
+
     def write_to_hdf(self):
-        if not self.download_successful:
+        if self.kline_df is None or len(self.kline_df) == 0:
             log.notice("Not writing to .h5 since no data was received from API")
             return
         to_hdf(self.kline_df, self.symbol, self.interval)

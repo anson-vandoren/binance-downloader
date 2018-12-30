@@ -46,37 +46,6 @@ Kline = KlineCols(
 )
 
 
-def get_file_name(
-    symbol: str, interval: str, extension: str = "", timestamped: bool = True
-) -> str:
-    """Get an appropriate storage file path and name based on data being stored and format
-
-    :param symbol: Binance symbol pair, e.g. `ETHBTC` for the klines being stored
-    :param interval: Binance kline interval for data being stored, e.g. `1m`
-    :param extension: desired file extension, e.g. .csv or .h5
-    :param timestamped: if True, current timestamp will be prepended to the filename
-        Default: True
-    :return: string representation of the file path
-    """
-
-    # Normalise the file extension
-    if extension[0] != ".":
-        extension = f".{extension}"
-
-    if extension == ".h5":
-        # HDF files will store all intervals in the same file (different keys)
-        file_name = f"{symbol}{extension}"
-    else:
-        # CSV (and other formats) will create separate file for different intervals
-        file_name = f"{symbol}_{interval}{extension}"
-
-    if timestamped:
-        timestamp = pd.Timestamp("now").strftime("%Y-%m-%d_%H%M%S")
-        file_name = f"{timestamp}_{file_name}"
-
-    return os.path.join(BASE_DATA_DIR, file_name)
-
-
 def from_hdf(symbol: str, interval: str) -> Optional[pd.DataFrame]:
     """Try to load a DataFrame from .h5 store for a given symbol and interval
 
@@ -85,7 +54,7 @@ def from_hdf(symbol: str, interval: str) -> Optional[pd.DataFrame]:
     :return: Pandas.DataFrame with requested data if found, otherwise None
     """
 
-    file_name = get_file_name(symbol, interval, extension="h5", timestamped=False)
+    file_name = _get_file_name(symbol, interval, ext="h5", with_ts=False)
 
     if not os.path.isfile(file_name):
         log.info(f"{file_name} does not exist, returning None")
@@ -129,7 +98,7 @@ def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
         log.error("Cannot save to HDF file without both symbol and interval specified")
         return
 
-    file_name = get_file_name(symbol, interval, extension="h5", timestamped=False)
+    file_name = _get_file_name(symbol, interval, ext="h5", with_ts=False)
 
     with pd.HDFStore(file_name, "a") as store:
 
@@ -166,3 +135,32 @@ def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
 
             else:
                 log.notice(f"No new data not already contained in HDF5 store")
+
+
+def _get_file_name(symbol: str, interval: str, ext: str = "", with_ts: bool = True):
+    """Get an appropriate storage file path and name based on data being stored and format
+
+    :param symbol: Binance symbol pair, e.g. `ETHBTC` for the klines being stored
+    :param interval: Binance kline interval for data being stored, e.g. `1m`
+    :param ext: desired file extension, e.g. .csv or .h5
+    :param with_ts: if True, current timestamp will be prepended to the filename
+        Default: True
+    :return: string representation of the file path
+    """
+
+    # Normalise the file extension
+    if ext[0] != ".":
+        ext = f".{ext}"
+
+    if ext == ".h5":
+        # HDF files will store all intervals in the same file (different keys)
+        file_name = f"{symbol}{ext}"
+    else:
+        # CSV (and other formats) will create separate file for different intervals
+        file_name = f"{symbol}_{interval}{ext}"
+
+    if with_ts:
+        timestamp = pd.Timestamp("now").strftime("%Y-%m-%d_%H%M%S")
+        file_name = f"{timestamp}_{file_name}"
+
+    return os.path.join(BASE_DATA_DIR, file_name)

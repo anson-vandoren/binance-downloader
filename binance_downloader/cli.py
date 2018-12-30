@@ -64,5 +64,5 @@ def main():
     interval = str(args.interval)
     binance = BinanceAPI(interval, symbol, start_date, end_date)
     binance.fetch_parallel()
-    binance.write_to_csv()
+    binance.progress_csv()
     binance.write_to_hdf()
