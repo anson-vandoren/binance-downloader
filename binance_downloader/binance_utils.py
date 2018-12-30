@@ -249,10 +249,10 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
 def kline_df_from_flat_list(flat_list: List):
     df = pd.DataFrame(
         flat_list,
-        columns=Kline.col_names()
+        columns=list(Kline)
     )
     # Fix numeric values
-    for f in Kline.col_names():
+    for f in list(Kline):
         df[f] = pd.to_numeric(df[f])
     # Fix dates
     df[Kline.OPEN_TIME] = pd.to_datetime(df[Kline.OPEN_TIME], unit="ms")

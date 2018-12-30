@@ -177,7 +177,7 @@ class BinanceAPI:
         with open(output, "w") as csv_file:
             # Ensure 9 decimal places  (most prices are to 8 places)
             self.kline_df.to_csv(
-                csv_file, index=False, float_format="%.9f", header=Kline.str_names()
+                csv_file, index=False, float_format="%.9f", header=list(Kline)
             )
         log.notice(f"Done writing {output} for {len(self.kline_df)} lines")
 
