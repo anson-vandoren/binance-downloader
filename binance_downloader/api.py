@@ -3,20 +3,21 @@ from typing import Tuple, Optional
 
 import pandas as pd
 from logbook import Logger
+import numpy as np
 from tqdm import tqdm
 
-from .db import Kline, to_hdf, from_hdf
+from .db import Kline, to_hdf, from_hdf, range_from_hdf
 from .binance_utils import (
     max_request_freq,
     KLINE_INTERVALS,
     interval_to_milliseconds,
-    date_to_milliseconds,
     get_klines,
     earliest_valid_timestamp,
     kline_df_from_list,
     KLINE_URL,
 )
-from .utils import ensure_dir, rate_limited
+
+from .utils import ensure_dir, rate_limited, date_to_milliseconds
 
 # Set up LogBook logging
 log = Logger(__name__.split(".", 1)[-1])
@@ -164,51 +165,44 @@ class BinanceAPI:
         start = max(self.start_time, earliest)
         return start
 
-    def write_to_csv(self, output=None):
+    def write_to_csv(self, output=None, show_progress=True):
         """Write k-lines retrieved from Binance into a csv file
 
         :param output: output file path. If none, will be stored in ./downloaded
             directory with a timestamped filename based on symbol pair and interval
+        :param show_progress: If True (default), show a terminal progress bar to
+            track write completion.
         :return: None
         """
-        if self.kline_df is None or len(self.kline_df) == 0:
-            log.notice("Not writing to .csv since no data was received from API")
+
+        df = range_from_hdf(self.symbol, self.interval, self.start_time, self.end_time)
+        if df is None or len(df) == 0:
+            log.notice(
+                f"Not writing CSV since no data between {self.start_time} and {self.end_time}"
+            )
             return
 
         # Generate default file name/path if none given
         output = output or self.output_file
-
-        with open(output, "w") as csv_file:
-            # Ensure 9 decimal places  (most prices are to 8 places)
-            self.kline_df.to_csv(
-                csv_file, index=False, float_format="%.9f", header=list(Kline)
-            )
-        log.notice(f"Done writing {output} for {len(self.kline_df)} lines")
-
-    def progress_csv(self):
-        if self.kline_df is None or len(self.kline_df) == 0:
-            log.notice("Not writing to .csv since no data was received from API")
-            return
-        output = self.output_file
-        import numpy as np
-
-        ixs = np.array_split(self.kline_df.index, 100)
         log.info(f"Writing CSV output to {output}")
-        for ix, subset in tqdm(enumerate(ixs), total=100, desc="Write CSV", unit=" pct"):
-            if ix == 0:
-                self.kline_df.loc[subset].to_csv(
-                    output,
-                    mode="w",
-                    index=False,
-                    float_format="%.9f",
-                    header=list(Kline),
-                )
-            else:
-                self.kline_df.loc[subset].to_csv(
-                    output, mode="a", header=None, float_format="%.9f"
-                )
 
-        log.info(f"Done writing {len(self.kline_df)} lines to CSV")
+        csv_params = {"index": False, "float_format": "%.9f", "header": list(Kline)}
+
+        if not show_progress:
+            # Just write it all in one chunk. Poor UX for large amounts of data
+            df.to_csv(output, **csv_params)
+        else:
+            num_chunks = 100
+            chunks = np.array_split(df.index, num_chunks)
+            bar_params = {"total": num_chunks, "desc": "Write CSV", "unit": " pct"}
+
+            for i, subset in tqdm(enumerate(chunks), **bar_params):
+                if i == 0:  # For the first chunk, create file and write header
+                    df.loc[subset].to_csv(output, mode="w", **csv_params)
+                else:  # For subsequent chunks, append and don't write header
+                    df.loc[subset].to_csv(output, mode="a", **csv_params)
+
+        log.notice(f"Done writing {output} for {len(df)} lines")
 
     def write_to_hdf(self):
         if self.kline_df is None or len(self.kline_df) == 0:

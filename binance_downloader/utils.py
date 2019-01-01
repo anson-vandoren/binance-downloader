@@ -5,6 +5,9 @@ import time
 from functools import wraps
 from typing import Optional, Dict
 
+import dateparser
+import pandas as pd
+import pytz
 from logbook import Logger
 
 CACHE_DIR = "cache/"
@@ -61,3 +64,19 @@ def json_to_cache(new_json: Dict, file_name: str) -> None:
     ensure_dir(json_path)
     with open(json_path, "w") as outfile:
         json.dump(new_json, outfile, ensure_ascii=False)
+
+
+def from_ms_utc(binance_time: int) -> pd.Timestamp:
+    return pd.to_datetime(binance_time, unit="ms", utc=True)
+
+
+def date_to_milliseconds(date_str, date_format="YMD") -> int:
+    epoch = pd.Timestamp(0, tz="utc")
+    d = dateparser.parse(date_str, settings={"DATE_ORDER": date_format})
+
+    if d is None:
+        raise ValueError(f"Unable to parse valid date from '{date_str}'")
+
+    if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
+        d = d.replace(tzinfo=pytz.utc)
+    return int((d - epoch).total_seconds() * 1000.0)

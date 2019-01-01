@@ -1,13 +1,11 @@
 from typing import List, Union
 
-import dateparser
 import pandas as pd
-import pytz
 import requests
 from logbook import Logger
 
 from .db import Kline
-from .utils import json_to_cache, _json_from_cache
+from .utils import json_to_cache, _json_from_cache, from_ms_utc, date_to_milliseconds
 
 log = Logger(__name__.split(".", 1)[-1])
 
@@ -135,25 +133,6 @@ def interval_to_milliseconds(interval) -> Union[int, None]:
         return int(interval[:-1]) * seconds_per_unit[interval[-1]] * 1000
     except (ValueError, KeyError):
         return None
-
-
-def date_to_milliseconds(date_str, date_format="YMD") -> int:
-    day_first = date_format.upper() == "DMY"
-    year_first = date_format.upper() == "YMD"
-    epoch = pd.Timestamp(0, tz="utc")
-    # d = pd.to_datetime(date_str, yearfirst=year_first, dayfirst=day_first)
-    d = dateparser.parse(date_str, settings={'DATE_ORDER': date_format})
-
-    if d is None:
-        raise ValueError(f"Unable to parse valid date from '{date_str}'")
-
-    if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
-        d = d.replace(tzinfo=pytz.utc)
-    return int((d - epoch).total_seconds() * 1000.0)
-
-
-def from_ms_utc(binance_time: int) -> pd.Timestamp:
-    return pd.to_datetime(binance_time, unit="ms", utc=True, )
 
 
 def get_klines(

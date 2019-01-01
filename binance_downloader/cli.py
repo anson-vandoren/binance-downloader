@@ -3,7 +3,7 @@ import argparse
 from logbook import Logger
 
 from .api import BinanceAPI
-from .binance_utils import date_to_milliseconds
+from .utils import date_to_milliseconds
 
 log = Logger(__name__.split(".", 1)[-1])
 
@@ -64,5 +64,5 @@ def main():
     interval = str(args.interval)
     binance = BinanceAPI(interval, symbol, start_date, end_date)
     binance.fetch_parallel()
-    binance.progress_csv()
     binance.write_to_hdf()
+    binance.write_to_csv()

@@ -1,9 +1,11 @@
 """Save or load data with different file types"""
 import os
 from collections import namedtuple
-from typing import Optional
+from typing import Optional, Union
 
 import pandas as pd
+
+from .utils import from_ms_utc
 
 # Set up LogBook logging
 from logbook import Logger
@@ -75,6 +77,16 @@ def from_hdf(symbol: str, interval: str) -> Optional[pd.DataFrame]:
             return None
         else:
             return df
+
+
+def range_from_hdf(symbol, interval, start, end) -> Optional[pd.DataFrame]:
+    full_df = from_hdf(symbol, interval).set_index(Kline.OPEN_TIME, drop=False)
+    if isinstance(start, int):
+        start = from_ms_utc(start)
+    if isinstance(end, int):
+        end = from_ms_utc(end)
+    df = full_df.loc[start:end]
+    return df
 
 
 def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
