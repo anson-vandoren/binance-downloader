@@ -48,15 +48,68 @@ class BinanceAPI:
         self.kline_df: Optional[pd.DataFrame] = None
 
     @rate_limited(max_per_sec)
-    def fetch_blocks(self, start_end_times):
+    def fetch_chunks(self, start_end_times):
         start, end = start_end_times
-        return get_klines(
-            self.symbol,
-            self.interval,
-            start_time=start,
-            end_time=end,
-            limit=self.req_limit,
-        )
+        result_list = get_klines(self.symbol, self.interval, start_time=start, end_time=end)
+
+        # May have been missing data from Binance (due to outage, maintenance period, etc)
+        return self._fill_empty(result_list, start_end_times)
+
+    def _fill_empty(self, result_list, chunk_range):
+        ms_interval = interval_to_milliseconds(self.interval)
+
+        def close_enough(t1, t2):
+            return abs(t2 - t1) < (ms_interval / 2)
+
+        start, end = chunk_range
+
+        expected_rows = int((end - start) / ms_interval) + 1
+        if len(result_list) != expected_rows:
+            log.info(
+                f"Expected {expected_rows} rows, but only got {len(result_list)} for chunk starting at {start}"
+            )
+
+            # Five cases:
+            #  0. Completely missing chunk
+            #  1. Missing data from the start of the chunk
+            #  2. Missing data from the end of the chunk
+            #  3. Reset interval to different start point
+            #  4. Missing data internal to the chunk
+
+            print(f'Examining chunk supposedly starting at {from_ms_utc(start)}')
+            print(f"Expected start {from_ms_utc(start)}\tand end at {from_ms_utc(end)}")
+            print(f'Actual start   {from_ms_utc(result_list[0][0])}\tand end at {from_ms_utc(result_list[-1][0])}')
+            print(f"Expected {expected_rows} rows, but only got {len(result_list)}")
+            if len(result_list) == 0:
+                filled_result = [[start + ms_interval * r]+[np.nan for _ in range(len(Kline)-1)] for r in range(expected_rows)]
+                return filled_result
+
+            if not close_enough(start, result_list[0][0]) and start < result_list[0][0]:
+                front_missing = (result_list[0][0] - start) // ms_interval
+                result_list = [[start + ms_interval * r]+[np.nan for _ in range(len(Kline)-1)] for r in range(front_missing)] + result_list
+                print(f'Missing {front_missing} from the start. Filled starting at {from_ms_utc(result_list[0][0])}')
+
+            elif start != result_list[0][0]:
+                print('Start is close but not exact')
+            if not close_enough(end, result_list[-1][0]) and end > result_list[-1][0]:
+                end_missing = (end - result_list[-1][0]) // ms_interval
+                result_list = result_list + [[result_list[-1][0] + ms_interval * (r+1)]+[np.nan for _ in range(len(Kline)-1)] for r in range(end_missing)]
+                print(f'Missing {end_missing} from the end ({from_ms_utc(end)}, {from_ms_utc(result_list[-1][0])})')
+            elif end != result_list[-1][0]:
+                print('End is close but not exact')
+
+            i = 1
+
+
+            while i < len(result_list):
+                print(from_ms_utc(result_list[i][0]))
+                # if result_list[i][0] > result_list[0][0] + ms_interval * i:
+                #     print(f'Missing at {from_ms_utc(result_list[i][0])}')
+                i += 1
+
+            print(f'Finally does start at {from_ms_utc(result_list[0][0])} and does end at {from_ms_utc(result_list[-1][0])}')
+        print()
+        return result_list
 
     def fetch_parallel(self):
         # Create list of all start and end timestamps
@@ -80,7 +133,7 @@ class BinanceAPI:
 
         # Create workers for all needed requests and create iterator
         pool = ThreadPool()
-        results = pool.imap(self.fetch_blocks, needed_ranges)
+        results = pool.imap(self.fetch_chunks, needed_ranges)
         pool.close()  # Prevent more tasks being added to the pool
 
         # Show progress meter
@@ -107,13 +160,16 @@ class BinanceAPI:
 
         cached_df.set_index(Kline.OPEN_TIME, inplace=True)
         uncached_ranges = []
+
         for r in desired_ranges:
             start, end = [from_ms_utc(timestamp) for timestamp in r]
+            expected_rows = (end - start) // interval_to_timedelta(self.interval) + 1
             delta = interval_to_timedelta(self.interval) / 2
             try:
                 if (
                     len(cached_df.loc[start - delta : start + delta]) > 0
                     and len(cached_df.loc[end - delta : end + delta]) > 0
+                    and len(cached_df.loc[start:end]) == expected_rows
                 ):
                     continue
                 else:
@@ -233,7 +289,7 @@ class BinanceAPI:
 
         # Get interval (in milliseconds) for limit * interval
         # (i.e. 1000 * 1m = 60,000,000 milliseconds)
-        span = int(self.req_limit) * interval_to_milliseconds(self.interval)
+        span = self.req_limit * interval_to_milliseconds(self.interval)
 
         if start and end:
             log.info("Found start and end dates. Fetching full interval")

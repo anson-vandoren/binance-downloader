@@ -141,9 +141,7 @@ def interval_to_timedelta(interval):
     return pd.Timedelta(msec, unit="ms")
 
 
-def get_klines(
-    symbol, interval: str, start_time=None, end_time=None, limit=None
-) -> List:
+def get_klines(symbol, interval, start_time=None, end_time=None, limit=1000) -> List:
     """Helper function to get klines from Binance for a single request
 
     :param symbol: (str)
@@ -171,13 +169,9 @@ def get_klines(
         start_time = date_to_milliseconds(start_time)
     if not isinstance(end_time, int) and end_time is not None:
         end_time = date_to_milliseconds(end_time)
-    if limit is None:
-        limit = 1000
-    elif limit > 1000:
-        log.warn("Clamping kline request limit to 1000")
-        limit = 1000
-    elif limit <= 0:
-        log.warn("Cannot have negative limit. Using 1000")
+
+    if not limit or (1 > limit > 1000):
+        log.warn(f"Invalid limit ({limit}), using 1000 instead")
         limit = 1000
 
     # Set parameters and make the request
