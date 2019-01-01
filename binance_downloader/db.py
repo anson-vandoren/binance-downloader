@@ -80,13 +80,23 @@ def from_hdf(symbol: str, interval: str) -> Optional[pd.DataFrame]:
 
 
 def range_from_hdf(symbol, interval, start, end) -> Optional[pd.DataFrame]:
-    full_df = from_hdf(symbol, interval).set_index(Kline.OPEN_TIME, drop=False)
+    """Lookup a symbol/interval in local cache and return all values between start/end
+
+    :param symbol: Binance symbol pair, e.g. `ETHBTC` for the klines to retrieve
+    :param interval: Binance kline interval to retrieve
+    :param start: Start date, either as timestamp (millisecond, UTC) or datetime-like
+    :param end: End date, either as timestamp (millisecond, UTC) or datetime-like
+    :return: pandas.DataFrame with requested data if found, otherwise None
+    """
+
     if isinstance(start, int):
         start = from_ms_utc(start)
     if isinstance(end, int):
         end = from_ms_utc(end)
-    df = full_df.loc[start:end]
-    return df
+
+    full_df = from_hdf(symbol, interval).set_index(Kline.OPEN_TIME, drop=False)
+
+    return full_df.loc[start:end]
 
 
 def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):

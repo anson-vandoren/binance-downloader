@@ -11,13 +11,14 @@ from .binance_utils import (
     max_request_freq,
     KLINE_INTERVALS,
     interval_to_milliseconds,
+    interval_to_timedelta,
     get_klines,
     earliest_valid_timestamp,
     kline_df_from_list,
     KLINE_URL,
 )
 
-from .utils import ensure_dir, rate_limited, date_to_milliseconds
+from .utils import ensure_dir, rate_limited, date_to_milliseconds, from_ms_utc
 
 # Set up LogBook logging
 log = Logger(__name__.split(".", 1)[-1])
@@ -100,14 +101,20 @@ class BinanceAPI:
     def _uncached_ranges(self, desired_ranges):
 
         cached_df = from_hdf(self.symbol, self.interval)
+
         if cached_df is None or len(cached_df) == 0:
             return desired_ranges  # Need all
+
         cached_df.set_index(Kline.OPEN_TIME, inplace=True)
         uncached_ranges = []
         for r in desired_ranges:
-            start, end = [pd.to_datetime(timestamp, unit="ms") for timestamp in r]
+            start, end = [from_ms_utc(timestamp) for timestamp in r]
+            delta = interval_to_timedelta(self.interval) / 2
             try:
-                if len(cached_df.loc[start]) > 0 and len(cached_df.loc[end]) > 0:
+                if (
+                    len(cached_df.loc[start - delta : start + delta]) > 0
+                    and len(cached_df.loc[end - delta : end + delta]) > 0
+                ):
                     continue
                 else:
                     uncached_ranges.append(r)
@@ -187,6 +194,7 @@ class BinanceAPI:
         log.info(f"Writing CSV output to {output}")
 
         csv_params = {"index": False, "float_format": "%.9f", "header": list(Kline)}
+        no_header_params = {"index": False, "float_format": "%.9f", "header": None}
 
         if not show_progress:
             # Just write it all in one chunk. Poor UX for large amounts of data
@@ -200,7 +208,7 @@ class BinanceAPI:
                 if i == 0:  # For the first chunk, create file and write header
                     df.loc[subset].to_csv(output, mode="w", **csv_params)
                 else:  # For subsequent chunks, append and don't write header
-                    df.loc[subset].to_csv(output, mode="a", **csv_params)
+                    df.loc[subset].to_csv(output, mode="a", **no_header_params)
 
         log.notice(f"Done writing {output} for {len(df)} lines")
 

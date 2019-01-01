@@ -127,12 +127,18 @@ def interval_to_milliseconds(interval) -> Union[int, None]:
     elif isinstance(interval, int):
         log.info(f"Assuming interval '{interval}' is already in milliseconds")
         return interval
+
     # Try to convert from a string
     seconds_per_unit = {"m": 60, "h": 60 * 60, "d": 24 * 60 * 60, "w": 7 * 24 * 60 * 60}
     try:
         return int(interval[:-1]) * seconds_per_unit[interval[-1]] * 1000
     except (ValueError, KeyError):
         return None
+
+
+def interval_to_timedelta(interval):
+    msec = interval_to_milliseconds(interval)
+    return pd.Timedelta(msec, unit="ms")
 
 
 def get_klines(
