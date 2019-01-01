@@ -8,7 +8,7 @@ import pandas as pd
 # Set up LogBook logging
 from logbook import Logger
 
-log = Logger(__name__)
+log = Logger(__name__.split(".", 1)[-1])
 
 BASE_DATA_DIR = "./downloaded/"
 
@@ -111,7 +111,6 @@ def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
         else:
             # Check whether given data is already stored
             old_df = store.get(key)
-            print(old_df[Kline.OPEN_TIME].iloc[0], df[Kline.OPEN_TIME].iloc[0])
             has_start = old_df[Kline.OPEN_TIME].iloc[0] <= df[Kline.OPEN_TIME].iloc[0]
             has_end = old_df[Kline.CLOSE_TIME].iloc[-1] >= df[Kline.CLOSE_TIME].iloc[-1]
 

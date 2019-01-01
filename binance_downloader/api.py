@@ -19,7 +19,7 @@ from .binance_utils import (
 from .utils import ensure_dir, rate_limited
 
 # Set up LogBook logging
-log = Logger(__name__)
+log = Logger(__name__.split(".", 1)[-1])
 
 
 class BinanceAPI:
@@ -82,17 +82,19 @@ class BinanceAPI:
         pool.close()  # Prevent more tasks being added to the pool
 
         # Show progress meter
-        with tqdm(total=len(needed_ranges) * self.req_limit, desc="Download ") as pbar:
+        with tqdm(total=len(needed_ranges), desc="Download ", unit=" chunk") as pbar:
             flat_results = []
             for result in results:
-                pbar.update(self.req_limit)
+                pbar.update(1)
                 flat_results.extend(result)
 
         # Block until all workers are done
         pool.join()
 
         self.kline_df = kline_df_from_list(flat_results)
-        log.info(f'Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete.')
+        log.info(
+            f"Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete."
+        )
 
     def _uncached_ranges(self, desired_ranges):
 
@@ -189,15 +191,24 @@ class BinanceAPI:
             return
         output = self.output_file
         import numpy as np
-        ixs = np.array_split(self.kline_df.index, 100)
-        log.info(f'Writing CSV output to {output}')
-        for ix, subset in tqdm(enumerate(ixs), total=100, desc="Write CSV"):
-            if ix == 0:
-                self.kline_df.loc[subset].to_csv(output, mode='w', index=False, float_format="%.9f", header=list(Kline))
-            else:
-                self.kline_df.loc[subset].to_csv(output, mode='a', header=None, float_format="%.9f")
 
-        log.info(f'Done writing {len(self.kline_df)} lines to CSV')
+        ixs = np.array_split(self.kline_df.index, 100)
+        log.info(f"Writing CSV output to {output}")
+        for ix, subset in tqdm(enumerate(ixs), total=100, desc="Write CSV", unit=" pct"):
+            if ix == 0:
+                self.kline_df.loc[subset].to_csv(
+                    output,
+                    mode="w",
+                    index=False,
+                    float_format="%.9f",
+                    header=list(Kline),
+                )
+            else:
+                self.kline_df.loc[subset].to_csv(
+                    output, mode="a", header=None, float_format="%.9f"
+                )
+
+        log.info(f"Done writing {len(self.kline_df)} lines to CSV")
 
     def write_to_hdf(self):
         if self.kline_df is None or len(self.kline_df) == 0:

@@ -5,7 +5,7 @@ from logbook import Logger
 from .api import BinanceAPI
 from .binance_utils import date_to_milliseconds
 
-log = Logger(__name__)
+log = Logger(__name__.split(".", 1)[-1])
 
 
 def main():

@@ -9,7 +9,7 @@ from logbook import Logger
 
 CACHE_DIR = "cache/"
 
-log = Logger(__name__)
+log = Logger(__name__.split(".", 1)[-1])
 
 
 def rate_limited(max_per_second):

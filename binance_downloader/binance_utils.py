@@ -9,7 +9,7 @@ from logbook import Logger
 from .db import Kline
 from .utils import json_to_cache, _json_from_cache
 
-log = Logger(__name__)
+log = Logger(__name__.split(".", 1)[-1])
 
 BASE_URL = "https://api.binance.com/api/v1"
 KLINE_URL = BASE_URL + "/klines"
