@@ -5,7 +5,7 @@ import requests
 from logbook import Logger
 
 from .db import Kline
-from .utils import json_to_cache, json_from_cache
+from .utils import json_to_cache, _json_from_cache
 
 log = Logger(__name__)
 
@@ -85,47 +85,43 @@ def _req_limits(exchange_info: dict) -> List:
     ]
 
 
-def get_exchange_info() -> dict:
-    # Try to read in from disk:
-    max_age = pd.Timedelta("1 day")
-    prev_json = json_from_cache(EXCHANGE_INFO_FILE)
-    if prev_json:
-        old_timestamp = pd.to_datetime(
-            prev_json.get("serverTime", None), unit="ms", utc=True
-        )
-        age = pd.Timestamp("now", tz="utc") - old_timestamp
+def get_exchange_info(force_update=False) -> dict:
 
-        if old_timestamp and age <= max_age:
-            # Data is OK to use
-            log.info(
-                f"Using cached exchange info since age ({age}) is less than {max_age}"
-            )
-            return prev_json
-        else:
-            # Otherwise, get it again
-            log.notice("Cached exchange info unavailable or stale; pulling from server")
+    if not force_update:
+        prev_json = _json_from_cache(EXCHANGE_INFO_FILE)
+        if prev_json:
+            cache_time = from_ms_utc(prev_json.get("serverTime", 0))
+            age = pd.Timestamp("now", tz="utc") - cache_time
 
+            if age <= pd.Timedelta("1 day"):
+                log.info(f"Using cached exchange info (age={age})")
+                return prev_json
+            else:
+                log.notice("Fetching new exchange info from server")
+
+    # Cache is stale, not present, or force update was requested
     response = requests.get(BASE_URL + "/exchangeInfo")
     _validate_api_response(response)
     data = response.json()
 
+    if not isinstance(data, dict):
+        raise ConnectionError("No exchange info returned from Binance")
+
     # Write out to disk for next time
     json_to_cache(data, EXCHANGE_INFO_FILE)
 
-    if isinstance(data, dict):
-        return data
-    else:
-        raise ConnectionError("No exchange info returned from Binance")
+    return data
 
 
 def interval_to_milliseconds(interval) -> Union[int, None]:
-    """Tries to get milliseconds from an interval input
+    """Try to get milliseconds from an interval input
 
     :param interval: (str, pandas.Timedelta, int)
         Interval in one of several types. Attempt to convert this value into
         milliseconds for a Binance API call
     :return: (int) milliseconds of the interval if successful, otherwise None
     """
+
     if isinstance(interval, pd.Timedelta):
         return int(interval.total_seconds() * 1000)
     elif isinstance(interval, int):
@@ -147,6 +143,10 @@ def date_to_milliseconds(date_str, date_format="YMD") -> int:
     if d.tz is None or d.tzinfo.utcoffset(d) is None:
         d = d.tz_localize("utc")
     return int((d - epoch).total_seconds() * 1000.0)
+
+
+def from_ms_utc(binance_time: int) -> pd.Timestamp:
+    return pd.to_datetime(binance_time, unit="ms", utc=True)
 
 
 def get_klines(
@@ -206,9 +206,9 @@ def get_klines(
 def _validate_api_response(response):
     if response.status_code in [429, 418]:
         raise ConnectionError(f"Rate limits exceeded or IP banned: {response.json()}")
-    elif response.status_code % 100 == 4:
+    elif response.status_code // 100 == 4:
         raise ConnectionError(f"Request error: {response.json()}")
-    elif response.status_code % 100 == 5:
+    elif response.status_code // 100 == 5:
         raise ConnectionError(f"API error, status is unknown: {response.json()}")
     elif response.status_code != 200:
         raise ConnectionError(f"Unknown error on kline request: {response.json()}")
@@ -220,14 +220,14 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
 
     # Check for locally cached response
     identifier = f"{symbol}_{interval}"
-    prev_json = json_from_cache(EARLIEST_TIMESTAMPS_FILE)
+    prev_json = _json_from_cache(EARLIEST_TIMESTAMPS_FILE)
     if prev_json:
         # Loaded JSON from disk, check if we already have this value:
         timestamp = prev_json.get(identifier, None)
         if timestamp is not None:
             log.info(
                 f"Found cached earliest timestamp for {identifier}: "
-                f"{pd.to_datetime(timestamp, unit='ms')}"
+                f"{from_ms_utc(timestamp)}"
             )
             return timestamp
     log.info(f"No cached earliest timestamp for {identifier}, so fetching from server")
@@ -246,20 +246,19 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
     return earliest_timestamp
 
 
-def kline_df_from_flat_list(flat_list: List):
-    df = pd.DataFrame(
-        flat_list,
-        columns=list(Kline)
-    )
+def kline_df_from_list(kline_list: List):
+    df = pd.DataFrame(kline_list, columns=list(Kline))
+
     # Fix numeric values
     for f in list(Kline):
         df[f] = pd.to_numeric(df[f])
-    # Fix dates
-    df[Kline.OPEN_TIME] = pd.to_datetime(df[Kline.OPEN_TIME], unit="ms")
-    df[Kline.CLOSE_TIME] = pd.to_datetime(df[Kline.CLOSE_TIME], unit="ms")
 
-    # Sort by interval open
-    df = df.sort_values(Kline.OPEN_TIME)
-    # Remove duplicates (from interval overlaps)
-    df = df.drop_duplicates(Kline.OPEN_TIME).reset_index(drop=True)
-    return df
+    # Fix dates
+    df[Kline.OPEN_TIME] = from_ms_utc(df[Kline.OPEN_TIME])
+    df[Kline.CLOSE_TIME] = from_ms_utc(df[Kline.CLOSE_TIME])
+
+    return (
+        df.sort_values(Kline.OPEN_TIME)
+        .drop_duplicates(Kline.OPEN_TIME)
+        .reset_index(drop=True)
+    )

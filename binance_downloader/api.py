@@ -13,7 +13,7 @@ from .binance_utils import (
     date_to_milliseconds,
     get_klines,
     earliest_valid_timestamp,
-    kline_df_from_flat_list,
+    kline_df_from_list,
     KLINE_URL,
 )
 from .utils import ensure_dir, rate_limited
@@ -91,7 +91,7 @@ class BinanceAPI:
         # Block until all workers are done
         pool.join()
 
-        self.kline_df = kline_df_from_flat_list(flat_results)
+        self.kline_df = kline_df_from_list(flat_results)
         log.info(f'Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete.')
 
     def _uncached_ranges(self, desired_ranges):

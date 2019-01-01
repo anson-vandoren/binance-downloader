@@ -45,16 +45,15 @@ def ensure_dir(file_path):
         os.makedirs(directory)
 
 
-def json_from_cache(file_name: str) -> Optional[Dict]:
+def _json_from_cache(file_name: str) -> Optional[Dict]:
     json_path = os.path.join(CACHE_DIR, file_name)
-    prev_json = {}
-    try:
-        with open(json_path, "r") as infile:
-            prev_json = json.load(infile)
-    except IOError:
-        log.warn(f"Error reading JSON from {json_path}")
 
-    return prev_json
+    try:
+        with open(json_path, "r") as cache_file:
+            return json.load(cache_file)
+    except IOError:
+        log.notice(f"Error reading JSON from {json_path}")
+        return None
 
 
 def json_to_cache(new_json: Dict, file_name: str) -> None:
