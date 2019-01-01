@@ -53,7 +53,14 @@ class BinanceAPI:
         result_list = get_klines(self.symbol, self.interval, start_time=start, end_time=end)
 
         # May have been missing data from Binance (due to outage, maintenance period, etc)
-        return self._fill_empty(result_list, start_end_times)
+        df =  pd.DataFrame(result_list, columns=list(Kline))
+        for f in list(Kline):
+            df[f] = pd.to_numeric(df[f])
+        df[Kline.OPEN_TIME] = from_ms_utc(df[Kline.OPEN_TIME])
+        df[Kline.CLOSE_TIME] = from_ms_utc(df[Kline.CLOSE_TIME])
+
+        return df
+        #return self._fill_empty(result_list, start_end_times)
 
     def _fill_empty(self, result_list, chunk_range):
         ms_interval = interval_to_milliseconds(self.interval)
@@ -138,15 +145,15 @@ class BinanceAPI:
 
         # Show progress meter
         with tqdm(total=len(needed_ranges), desc="Download ", unit=" chunk") as pbar:
-            flat_results = []
+            df = pd.DataFrame()
             for result in results:
                 pbar.update(1)
-                flat_results.extend(result)
+                df = pd.concat([df, result], ignore_index=True)
 
         # Block until all workers are done
         pool.join()
 
-        self.kline_df = kline_df_from_list(flat_results)
+        self.kline_df = df.drop_duplicates(Kline.OPEN_TIME).sort_values(Kline.OPEN_TIME).reset_index(drop=True)
         log.info(
             f"Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete."
         )
