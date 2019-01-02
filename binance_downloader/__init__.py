@@ -4,7 +4,7 @@
 import sys
 
 from logbook import StreamHandler, TimedRotatingFileHandler
-from .utils import ensure_dir
+from .util import ensure_dir
 
 __version__ = "0.2"
 
@@ -14,6 +14,4 @@ ensure_dir(LOG_FILENAME)
 TimedRotatingFileHandler(LOG_FILENAME, bubble=True).push_application()
 
 # Log to stdout for info and above
-StreamHandler(sys.stdout, level='NOTICE', bubble=True).push_application()
-
-
+StreamHandler(sys.stdout, level="NOTICE", bubble=True).push_application()

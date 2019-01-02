@@ -1,14 +1,15 @@
+"""CLI to parse arguments and run appropriate API calls"""
 import argparse
 
 from logbook import Logger
 
-from .api import BinanceAPI
-from .utils import date_to_milliseconds
+from binance_downloader import api, util
 
 log = Logger(__name__.split(".", 1)[-1])
 
 
 def main():
+    """Parse arguments, download data from API, write to cache and CSV"""
     log.info("*" * 80)
     log.info("***" + "Starting CLI Parser for binance-downloader".center(74) + "***")
     log.info("*" * 80)
@@ -51,18 +52,18 @@ def main():
         date_format = "YMD"
 
     if args.start:
-        start_date = date_to_milliseconds(args.start, date_format=date_format)
+        start_date = util.date_to_milliseconds(args.start, date_format=date_format)
     else:
         start_date = None
 
     if args.end:
-        end_date = date_to_milliseconds(args.end, date_format=date_format)
+        end_date = util.date_to_milliseconds(args.end, date_format=date_format)
     else:
         end_date = None
 
     symbol = str(args.symbol)
     interval = str(args.interval)
-    binance = BinanceAPI(interval, symbol, start_date, end_date)
+    binance = api.KlineFetcher(interval, symbol, start_date, end_date)
     binance.fetch_parallel()
     binance.write_to_hdf()
     binance.write_to_csv()

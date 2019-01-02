@@ -1,9 +1,11 @@
+"""Utilities that are not specific to Binance API"""
+
 import json
 import os
 import threading
 import time
 from functools import wraps
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import dateparser
 import pandas as pd
@@ -18,8 +20,8 @@ log = Logger(__name__.split(".", 1)[-1])
 def rate_limited(max_per_second):
     """Prevents the decorated function from being called more than
     `max_per_second` times per second, locally, for one process
-
     """
+
     lock = threading.Lock()
     min_interval = 1.0 / max_per_second
 
@@ -42,13 +44,25 @@ def rate_limited(max_per_second):
     return decorate
 
 
-def ensure_dir(file_path):
+def ensure_dir(file_path) -> None:
+    """Convenience function to make a folder if the path doesn't already exist
+
+    :param file_path: fully qualified file path
+    :return: None
+    """
+
     directory = os.path.dirname(file_path)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
 
-def _json_from_cache(file_name: str) -> Optional[Dict]:
+def json_from_cache(file_name: str) -> Optional[Dict]:
+    """Try to read JSON in from a given filename in a pre-defined folder
+
+    :param file_name: desired file name. Appropriate folder will be prepended
+    :return: JSON (as a dict) if file is present, otherwise None
+    """
+
     json_path = os.path.join(CACHE_DIR, file_name)
 
     try:
@@ -60,6 +74,14 @@ def _json_from_cache(file_name: str) -> Optional[Dict]:
 
 
 def json_to_cache(new_json: Dict, file_name: str) -> None:
+    """Write some JSON to disk in a pre-defined folder
+
+    :param new_json: JSON to cache
+    :param file_name: file name in which to cache (will be overwritten)
+        Appropriate folder is prepended to the file name
+    :return: None
+    """
+
     json_path = os.path.join(CACHE_DIR, file_name)
     ensure_dir(json_path)
     with open(json_path, "w") as outfile:
@@ -67,16 +89,29 @@ def json_to_cache(new_json: Dict, file_name: str) -> None:
 
 
 def from_ms_utc(binance_time: int) -> pd.Timestamp:
+    """Convert Binance timestamps (milliseconds) to a datetime-like representation
+
+    :param binance_time: integer number of milliseconds since epoch
+    :return: pandas.Timestamp representing the integer timestamp
+    """
+
     return pd.to_datetime(binance_time, unit="ms", utc=True)
 
 
 def date_to_milliseconds(date_str, date_format="YMD") -> int:
-    epoch = pd.Timestamp(0, tz="utc")
-    d = dateparser.parse(date_str, settings={"DATE_ORDER": date_format})
+    """Convert a date-like string to milliseconds since epoch
 
-    if d is None:
+    :param date_str: string representing a date
+    :param date_format: format order for the date. Defaults to YMD (e.g., 2018-01-30)
+    :return: milliseconds since epoch
+    """
+
+    epoch = pd.Timestamp(0, tz="utc")
+    to_date = dateparser.parse(date_str, settings={"DATE_ORDER": date_format})
+
+    if to_date is None:
         raise ValueError(f"Unable to parse valid date from '{date_str}'")
 
-    if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
-        d = d.replace(tzinfo=pytz.utc)
-    return int((d - epoch).total_seconds() * 1000.0)
+    if to_date.tzinfo is None or to_date.tzinfo.utcoffset(to_date) is None:
+        to_date = to_date.replace(tzinfo=pytz.utc)
+    return int((to_date - epoch).total_seconds() * 1000.0)

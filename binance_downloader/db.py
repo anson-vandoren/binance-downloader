@@ -1,18 +1,18 @@
 """Save or load data with different file types"""
 import os
 from collections import namedtuple
-from typing import Optional, Union
+from typing import Optional
 
+import numpy as np
 import pandas as pd
-
-from .utils import from_ms_utc
-
-# Set up LogBook logging
 from logbook import Logger
+from tqdm import tqdm
 
-log = Logger(__name__.split(".", 1)[-1])
+from binance_downloader import util
 
-BASE_DATA_DIR = "./downloaded/"
+log = Logger(__name__.split(".", 1)[-1])  # pylint: disable=invalid-name
+
+_BASE_DATA_DIR = "./downloaded/"
 
 KlineCols = namedtuple(
     "KlineCols",
@@ -71,12 +71,12 @@ def from_hdf(symbol: str, interval: str) -> Optional[pd.DataFrame]:
             log.info(f"{symbol}/{interval} data not stored in HDF at {file_name}")
             return None
         try:
-            df = store.get(interval_key)
+            data_frame = store.get(interval_key)
         except (KeyError, AttributeError):
             log.notice(f"Corrupted/missing data for {symbol}/{interval} at {file_name}")
             return None
         else:
-            return df
+            return data_frame
 
 
 def range_from_hdf(symbol, interval, start, end) -> Optional[pd.DataFrame]:
@@ -90,21 +90,59 @@ def range_from_hdf(symbol, interval, start, end) -> Optional[pd.DataFrame]:
     """
 
     if isinstance(start, int):
-        start = from_ms_utc(start)
+        start = util.from_ms_utc(start)
     if isinstance(end, int):
-        end = from_ms_utc(end)
+        end = util.from_ms_utc(end)
 
     full_df = from_hdf(symbol, interval).set_index(Kline.OPEN_TIME, drop=False)
 
     return full_df.loc[start:end]
 
 
-def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
+def to_csv(data_frame: pd.DataFrame, symbol: str, interval: str, show_progress=True):
+    """Write a pandas DataFrame out to CSV
+
+    :param data_frame: DataFrame to be written
+    :param symbol: Binance symbol pair, e.g. `ETHBTC` for the klines to retrieve
+    :param interval: Binance kline interval to retrieve
+    :param show_progress: Show a progress bar while writing? Default True
+    :return: None
+    """
+
+    if data_frame is None or data_frame.empty:
+        log.notice(f"Not writing CSV: empty DataFrame")
+        return
+
+    f_name = _get_file_name(symbol, interval, ext="csv", with_ts=True)
+
+    log.info(f"Writing CSV output to {f_name}")
+
+    csv_opts = {"index": False, "float_format": "%.9f"}
+
+    if not show_progress:
+        data_frame.to_csv(f_name, **csv_opts)
+    else:
+        # Split data into chunks to allow for updating progress bar
+        num_chunks = 100
+        chunks = np.array_split(data_frame.index, num_chunks)
+        bar_params = {"total": num_chunks, "desc": "Write CSV", "unit": " pct"}
+
+        # tqdm handles the progress bar display automatically
+        for i, chunk in tqdm(enumerate(chunks), **bar_params):
+            if i == 0:  # For the first chunk, create file and write header
+                data_frame.loc[chunk].to_csv(f_name, mode="w", **csv_opts, header=True)
+            else:  # For subsequent chunks, append and don't write header
+                data_frame.loc[chunk].to_csv(f_name, mode="a", **csv_opts, header=False)
+
+    log.notice(f"Done writing {f_name} for {len(data_frame)} lines")
+
+
+def to_hdf(data_frame: pd.DataFrame, symbol: str, interval: str, force_merge=False):
     """Store kline data to HDF5 store.
     This function will try to avoid rewriting data if it already exists, since merging,
     de-duplicating, sorting, and re-indexing can be expensive.
 
-    :param df: DataFrame with the (possibly) new klines
+    :param data_frame: DataFrame with the (possibly) new klines
     :param symbol: Binance symbol (used for file name generation)
     :param interval: Binance kline interval (used for key lookup in the HDF5 store)
     :param force_merge: default is False. If True, will merge, de-duplicate, sort, and
@@ -113,7 +151,7 @@ def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
     """
 
     # Ensure there is something to save and we know where to save at
-    if df is None or len(df) == 0:
+    if data_frame is None or data_frame.empty:
         log.notice("Cannot save to HDF file since the supplied DataFrame was empty")
         return
     if not symbol or not interval:
@@ -127,38 +165,38 @@ def to_hdf(df: pd.DataFrame, symbol: str, interval: str, force_merge=False):
         key = f"interval_{interval}"
 
         if key not in store:
-            store.put(key, df, format="table")
-            log.notice(f"Interval {key} not in {symbol} HDF5 file, adding key")
+            store.put(key, data_frame, format="table")
+            log.info(f"Adding interval {key} to {symbol} HDF5 file")
             return
+
+        # Check whether given data is already stored
+        old_df = store.get(key)
+        has_start = (
+            old_df[Kline.OPEN_TIME].iloc[0] <= data_frame[Kline.OPEN_TIME].iloc[0]
+        )
+        has_end = (
+            old_df[Kline.CLOSE_TIME].iloc[-1] >= data_frame[Kline.CLOSE_TIME].iloc[-1]
+        )
+
+        same_length = len(old_df) == len(data_frame)
+        matching_data = has_start and has_end and same_length
+
+        if not matching_data or force_merge:
+            new_df = (
+                pd.concat([old_df, data_frame], ignore_index=True)
+                .drop_duplicates(Kline.OPEN_TIME)
+                .sort_values(Kline.OPEN_TIME)
+                .reset_index(drop=True)
+            )
+
+            store.put(key, new_df, format="table")
+
+            log.notice(f"Merged cache: {len(old_df)} lines -> {len(new_df)} lines")
         else:
-            # Check whether given data is already stored
-            old_df = store.get(key)
-            has_start = old_df[Kline.OPEN_TIME].iloc[0] <= df[Kline.OPEN_TIME].iloc[0]
-            has_end = old_df[Kline.CLOSE_TIME].iloc[-1] >= df[Kline.CLOSE_TIME].iloc[-1]
-
-            same_length = len(old_df) == len(df)
-            matching_data = has_start and has_end and same_length
-
-            # TODO: May result in false positives; should be OK for small data sets
-            if not matching_data or force_merge:
-                new_df = (
-                    pd.concat([old_df, df], ignore_index=True)
-                    .drop_duplicates(Kline.OPEN_TIME)
-                    .sort_values(Kline.OPEN_TIME)
-                    .reset_index(drop=True)
-                )
-
-                store.put(key, new_df, format="table")
-
-                log.notice(
-                    f"Merged {symbol}/{key}: {len(old_df)} lines -> {len(new_df)} lines"
-                )
-
-            else:
-                log.notice(f"No new data not already contained in HDF5 store")
+            log.info(f"No new data not already contained in HDF5 store")
 
 
-def _get_file_name(symbol: str, interval: str, ext: str = "", with_ts: bool = True):
+def _get_file_name(symbol: str, interval: str, ext: str, with_ts: bool = True):
     """Get an appropriate storage file path and name based on data being stored and format
 
     :param symbol: Binance symbol pair, e.g. `ETHBTC` for the klines being stored
@@ -184,4 +222,4 @@ def _get_file_name(symbol: str, interval: str, ext: str = "", with_ts: bool = Tr
         timestamp = pd.Timestamp("now").strftime("%Y-%m-%d_%H%M%S")
         file_name = f"{timestamp}_{file_name}"
 
-    return os.path.join(BASE_DATA_DIR, file_name)
+    return os.path.join(_BASE_DATA_DIR, file_name)
