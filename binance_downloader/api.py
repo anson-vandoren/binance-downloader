@@ -53,14 +53,31 @@ class BinanceAPI:
         result_list = get_klines(self.symbol, self.interval, start_time=start, end_time=end)
 
         # May have been missing data from Binance (due to outage, maintenance period, etc)
-        df =  pd.DataFrame(result_list, columns=list(Kline))
+        df = pd.DataFrame(result_list, columns=list(Kline))
+
         for f in list(Kline):
             df[f] = pd.to_numeric(df[f])
         df[Kline.OPEN_TIME] = from_ms_utc(df[Kline.OPEN_TIME])
         df[Kline.CLOSE_TIME] = from_ms_utc(df[Kline.CLOSE_TIME])
 
-        return df
-        #return self._fill_empty(result_list, start_end_times)
+        return self._clean_data(df, start_end_times)
+
+    def _clean_data(self, df, chunk_range):
+        start, end = chunk_range
+        clean_start = from_ms_utc(start).replace(second=0, microsecond=0)
+
+        ms_interval = interval_to_milliseconds(self.interval)
+        td_interval = interval_to_timedelta(self.interval)
+        expected_rows = int((end - start) / ms_interval + 1)
+
+        df.set_index(Kline.OPEN_TIME, inplace=True)
+        new_idx = [clean_start + i * td_interval for i in range(expected_rows)]
+        
+        if len(df) == 0:
+            new_df = df.reindex(index=new_idx)
+        else:
+            new_df = df.reindex(index=new_idx, tolerance=td_interval / 2, method='nearest', limit=1)
+        return new_df.reset_index()
 
     def _fill_empty(self, result_list, chunk_range):
         ms_interval = interval_to_milliseconds(self.interval)
