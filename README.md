@@ -34,16 +34,18 @@ $ git clone https://github.com/anson-vandoren/binance-downloader.git
 $ cd binance-downloader
 ```
 ##### Activate your virtual environment
-> Poetry will try to automatically enable a virtual environment for you if it detects
-> you are not already using one
-
-```console
-$ mkvirtualenv binance-downloader
-```
-or
-```console
-$ workon binance-downloader
-```
+Poetry will try to automatically enable a virtual environment for you if it detects
+you are not already using one.
+> If you already use virtualenvwrapper (or similar), go ahead and make (or switch to)
+> your working environment beforehand:
+>
+>```console
+>$ mkvirtualenv binance-downloader
+>```
+>or
+>```console
+>$ workon binance-downloader
+>```
 
 ##### Install dependencies
 ```console
@@ -73,8 +75,7 @@ Using the Command Line Interface
 ##### Show available options
 ```console
 $  kline-binance --help
-usage: kline-binance [-h] [--start START] [--end END] [--output OUTPUT]
-                     [--dtfmt DATE_FORMAT]
+usage: kline-binance [-h] [--start START] [--end END] [--dtfmt DATE_FORMAT]
                      symbol interval
 
 CLI for downloading Binance Candlestick (k-line) data in bulk
@@ -89,18 +90,18 @@ optional arguments:
   -h, --help           show this help message and exit
   --start START        Start date to get data (inclusive). Format: yyyy/mm/dd
   --end END            End date to get data (exclusive). Format: yyyy/mm/dd
-  --output OUTPUT      File name to write data. Default:
-                       ./downloaded/timestamp_symbol_interval
   --dtfmt DATE_FORMAT  Format to use for dates (DMY, MDY, YMD, etc). Default:
                        YMD
 ```
 
 ##### Downloading data
 ```console
-$ kline-binance ETHBTC 1m --start 2018-01-01 --end 2018-07-01
-100%|███████████████████████████████████████████████████████| 264000/264000 [00:14<00:00, 18821.01it/s]
-[2018-12-29 07:22:20.463615] NOTICE: binance_downloader.api: Done writing ./downloaded/2018-12-28_232217_ETHBTC_1m_klines.csv for 258351 lines
-[2018-12-29 07:22:20.463753] NOTICE: binance_downloader.cli: download finished successfully.
+$  kline-binance XRPBTC 1m --start 2016-01-01 --end now
+[2019-01-02 05:12:40.941301] NOTICE: api: First available kline starts on {from_ms_utc(period_start)}
+[2019-01-02 05:12:40.941867] NOTICE: api: Downloading 620 chunks...
+Download : 100%|█████████████████████████████████████████████████| 620/620 [00:48<00:00, 12.73 chunk/s]
+Write CSV: 100%|███████████████████████████████████████████████████| 100/100 [00:14<00:00,  7.04 pct/s]
+[2019-01-02 05:13:44.784379] NOTICE: db: Done writing ./downloaded/2019-01-01_211330_XRPBTC_1m.csv for 612794 lines
 ```
 
 License
