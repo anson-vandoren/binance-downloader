@@ -141,18 +141,18 @@ def interval_to_timedelta(interval):
     return pd.Timedelta(msec, unit="ms")
 
 
-def get_klines(symbol, interval, start_time=None, end_time=None, limit=1000) -> List:
+def get_klines(symbol, interval, start=None, end=None, limit=1000) -> List:
     """Helper function to get klines from Binance for a single request
 
     :param symbol: (str)
         Symbol pair of interest (e.g. 'XRPBTC')
     :param interval: (str)
         Valid kline interval (e.g. '1m').
-    :param start_time: (int, str, pandas.Timestamp)
+    :param start: (int, str, pandas.Timestamp)
         First kline open time desired. If int, should be in milliseconds since
         Epoch. If string or pandas.Timestamp, will assume UTC unless otherwise
         specified.
-    :param end_time: (int, str, pandas.Timestamp)
+    :param end: (int, str, pandas.Timestamp)
         Last kline open time desired. If int, should be in milliseconds since
         Epoch. If string or pandas.Timestamp, will assume UTC unless otherwise
         specified.
@@ -165,10 +165,10 @@ def get_klines(symbol, interval, start_time=None, end_time=None, limit=1000) -> 
     """
     if not isinstance(symbol, str):
         raise ValueError(f"Cannot get kline for symbol {symbol}")
-    if not isinstance(start_time, int) and start_time is not None:
-        start_time = date_to_milliseconds(start_time)
-    if not isinstance(end_time, int) and end_time is not None:
-        end_time = date_to_milliseconds(end_time)
+    if not isinstance(start, int) and start is not None:
+        start = date_to_milliseconds(start)
+    if not isinstance(end, int) and end is not None:
+        end = date_to_milliseconds(end)
 
     if not limit or (1 > limit > 1000):
         log.warn(f"Invalid limit ({limit}), using 1000 instead")
@@ -176,10 +176,10 @@ def get_klines(symbol, interval, start_time=None, end_time=None, limit=1000) -> 
 
     # Set parameters and make the request
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-    if end_time is not None:
-        params["endTime"] = end_time
-    if start_time is not None:
-        params["startTime"] = start_time
+    if end is not None:
+        params["endTime"] = end
+    if start is not None:
+        params["startTime"] = start
 
     response = requests.get(KLINE_URL, params=params)
 
@@ -219,7 +219,7 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
     log.info(f"No cached earliest timestamp for {identifier}, so fetching from server")
 
     # This will return the first recorded k-line for this interval and symbol
-    kline = get_klines(symbol, interval, start_time=0, limit=1)
+    kline = get_klines(symbol, interval, start=0, limit=1)
 
     # Get just the OpenTime value (timestamp in milliseconds)
     earliest_timestamp = int(kline[0][0])

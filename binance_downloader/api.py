@@ -48,19 +48,20 @@ class BinanceAPI:
         self.kline_df: Optional[pd.DataFrame] = None
 
     @rate_limited(max_per_sec)
-    def fetch_chunks(self, start_end_times):
-        start, end = start_end_times
-        result_list = get_klines(self.symbol, self.interval, start_time=start, end_time=end)
+    def fetch_chunks(self, chunk_range):
+        start, end = chunk_range  # In milliseconds
 
-        # May have been missing data from Binance (due to outage, maintenance period, etc)
+        result_list = get_klines(self.symbol, self.interval, start=start, end=end)
         df = pd.DataFrame(result_list, columns=list(Kline))
+        print(df.dtypes)
+        exit()
 
         for f in list(Kline):
             df[f] = pd.to_numeric(df[f])
         df[Kline.OPEN_TIME] = from_ms_utc(df[Kline.OPEN_TIME])
         df[Kline.CLOSE_TIME] = from_ms_utc(df[Kline.CLOSE_TIME])
 
-        return self._clean_data(df, start_end_times)
+        return self._clean_data(df, chunk_range)
 
     def _clean_data(self, df, chunk_range):
         start, end = chunk_range
@@ -72,11 +73,13 @@ class BinanceAPI:
 
         df.set_index(Kline.OPEN_TIME, inplace=True)
         new_idx = [clean_start + i * td_interval for i in range(expected_rows)]
-        
+
         if len(df) == 0:
             new_df = df.reindex(index=new_idx)
         else:
-            new_df = df.reindex(index=new_idx, tolerance=td_interval / 2, method='nearest', limit=1)
+            new_df = df.reindex(
+                index=new_idx, tolerance=td_interval / 2, method="nearest", limit=1
+            )
         return new_df.reset_index()
 
     def _fill_empty(self, result_list, chunk_range):
@@ -100,30 +103,45 @@ class BinanceAPI:
             #  3. Reset interval to different start point
             #  4. Missing data internal to the chunk
 
-            print(f'Examining chunk supposedly starting at {from_ms_utc(start)}')
+            print(f"Examining chunk supposedly starting at {from_ms_utc(start)}")
             print(f"Expected start {from_ms_utc(start)}\tand end at {from_ms_utc(end)}")
-            print(f'Actual start   {from_ms_utc(result_list[0][0])}\tand end at {from_ms_utc(result_list[-1][0])}')
+            print(
+                f"Actual start   {from_ms_utc(result_list[0][0])}\tand end at {from_ms_utc(result_list[-1][0])}"
+            )
             print(f"Expected {expected_rows} rows, but only got {len(result_list)}")
             if len(result_list) == 0:
-                filled_result = [[start + ms_interval * r]+[np.nan for _ in range(len(Kline)-1)] for r in range(expected_rows)]
+                filled_result = [
+                    [start + ms_interval * r] + [np.nan for _ in range(len(Kline) - 1)]
+                    for r in range(expected_rows)
+                ]
                 return filled_result
 
             if not close_enough(start, result_list[0][0]) and start < result_list[0][0]:
                 front_missing = (result_list[0][0] - start) // ms_interval
-                result_list = [[start + ms_interval * r]+[np.nan for _ in range(len(Kline)-1)] for r in range(front_missing)] + result_list
-                print(f'Missing {front_missing} from the start. Filled starting at {from_ms_utc(result_list[0][0])}')
+                result_list = [
+                    [start + ms_interval * r] + [np.nan for _ in range(len(Kline) - 1)]
+                    for r in range(front_missing)
+                ] + result_list
+                print(
+                    f"Missing {front_missing} from the start. Filled starting at {from_ms_utc(result_list[0][0])}"
+                )
 
             elif start != result_list[0][0]:
-                print('Start is close but not exact')
+                print("Start is close but not exact")
             if not close_enough(end, result_list[-1][0]) and end > result_list[-1][0]:
                 end_missing = (end - result_list[-1][0]) // ms_interval
-                result_list = result_list + [[result_list[-1][0] + ms_interval * (r+1)]+[np.nan for _ in range(len(Kline)-1)] for r in range(end_missing)]
-                print(f'Missing {end_missing} from the end ({from_ms_utc(end)}, {from_ms_utc(result_list[-1][0])})')
+                result_list = result_list + [
+                    [result_list[-1][0] + ms_interval * (r + 1)]
+                    + [np.nan for _ in range(len(Kline) - 1)]
+                    for r in range(end_missing)
+                ]
+                print(
+                    f"Missing {end_missing} from the end ({from_ms_utc(end)}, {from_ms_utc(result_list[-1][0])})"
+                )
             elif end != result_list[-1][0]:
-                print('End is close but not exact')
+                print("End is close but not exact")
 
             i = 1
-
 
             while i < len(result_list):
                 print(from_ms_utc(result_list[i][0]))
@@ -131,7 +149,9 @@ class BinanceAPI:
                 #     print(f'Missing at {from_ms_utc(result_list[i][0])}')
                 i += 1
 
-            print(f'Finally does start at {from_ms_utc(result_list[0][0])} and does end at {from_ms_utc(result_list[-1][0])}')
+            print(
+                f"Finally does start at {from_ms_utc(result_list[0][0])} and does end at {from_ms_utc(result_list[-1][0])}"
+            )
         print()
         return result_list
 
@@ -170,7 +190,11 @@ class BinanceAPI:
         # Block until all workers are done
         pool.join()
 
-        self.kline_df = df.drop_duplicates(Kline.OPEN_TIME).sort_values(Kline.OPEN_TIME).reset_index(drop=True)
+        self.kline_df = (
+            df.drop_duplicates(Kline.OPEN_TIME)
+            .sort_values(Kline.OPEN_TIME)
+            .reset_index(drop=True)
+        )
         log.info(
             f"Download of {len(self.kline_df)} klines ({len(needed_ranges)} chunks) complete."
         )
