@@ -38,6 +38,7 @@ pylint = "^2.2"
 
 [tool.poetry.scripts]
 kline-binance = "binance_downloader.cli:main"
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
