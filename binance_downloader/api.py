@@ -53,7 +53,7 @@ class KlineFetcher(object):
             self.log = logger
 
         self.cache_file = cache_file
-        self.symbol = symbol.lower()
+        self.symbol = symbol.upper()
 
         if not interval or interval not in binance_utils.KLINE_INTERVALS:
             raise ValueError(f"'{interval}' not a valid Binance kline interval.")
