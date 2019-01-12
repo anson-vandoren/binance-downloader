@@ -30,17 +30,23 @@ from tqdm import tqdm
 from binance_downloader import binance_utils, db, util
 from binance_downloader.db import Kline
 
-# Set up LogBook logging
-log = Logger(__name__.split(".", 1)[-1])
-
 
 class KlineFetcher(object):
     """Convenience class to fetch all klines within a given range (in parallel)"""
 
-    MAX_PER_SEC = binance_utils.max_request_freq(req_weight=1)
     REQ_LIMIT = 1000
 
-    def __init__(self, interval: str, symbol: str, start_date, end_date):
+    def __init__(
+        self,
+        interval: str,
+        symbol: str,
+        start_date,
+        end_date,
+        logger=None,
+        max_per_second=1,
+    ):
+        if logger is None:
+            self.log = Logger(__name__.split(".", 1)[-1])
         self.symbol = symbol
 
         if not interval or interval not in binance_utils.KLINE_INTERVALS:
@@ -54,6 +60,8 @@ class KlineFetcher(object):
 
         self.kline_df: Optional[pd.DataFrame] = None
 
+        self.rate_limiter = util.rate_limited(max_per_second)
+
     def fetch_parallel(self) -> None:
         """Fetch klines in specified range from Binance API.
 
@@ -64,7 +72,7 @@ class KlineFetcher(object):
         # Create list of all start and end timestamps
         ranges = self._get_chunk_ranges()
         if not ranges:
-            log.warn(
+            self.log.warn(
                 f"There are no klines for {self.symbol} at {self.interval} intervals "
                 f"on Binance between {pd.to_datetime(self.start_time, unit='ms')} "
                 f"and {pd.to_datetime(self.end_time, unit='ms')}"
@@ -74,15 +82,16 @@ class KlineFetcher(object):
         # Check if any needed chunks aren't already cached
         needed_ranges = self._uncached_ranges(ranges)
         if not needed_ranges:
-            log.notice("All requested chunks already cached")
+            self.log.notice("All requested chunks already cached")
             return
 
         # At least some chunks actually need to be downloaded
-        log.notice(f"Downloading {len(needed_ranges)} chunks...")
+        self.log.notice(f"Downloading {len(needed_ranges)} chunks...")
 
         # Create workers for all needed requests and create iterator
         pool = ThreadPool()
-        results = pool.imap(self._fetch_chunks, needed_ranges)
+        rate_limited_fetch = self.rate_limiter(self._fetch_chunks)
+        results = pool.imap(rate_limited_fetch, needed_ranges)
         pool.close()
 
         result_df = pd.DataFrame()
@@ -101,7 +110,7 @@ class KlineFetcher(object):
             .reset_index(drop=True)
         )
 
-        log.info(f"Download complete for {len(self.kline_df)} klines from API")
+        self.log.info(f"Download complete for {len(self.kline_df)} klines from API")
 
     def write_to_csv(self):
         """Write k-lines retrieved from Binance into a csv file"""
@@ -111,7 +120,7 @@ class KlineFetcher(object):
         )
 
         if data_frame is None or data_frame.empty:
-            log.notice(
+            self.log.notice(
                 f"Not writing CSV: no data between {self.start_time} and {self.end_time}"
             )
             return
@@ -125,7 +134,7 @@ class KlineFetcher(object):
         """
 
         if self.kline_df is None or self.kline_df.empty:
-            log.notice("Not writing to .h5 since no data was received from API")
+            self.log.notice("Not writing to .h5 since no data was received from API")
             return
 
         db.to_hdf(self.kline_df, self.symbol, self.interval)
@@ -153,7 +162,7 @@ class KlineFetcher(object):
                 uncached_ranges.append(chunk_range)
 
         num_cached = len(desired_ranges) - len(uncached_ranges)
-        log.notice(f"Found {num_cached} chunks already cached")
+        self.log.notice(f"Found {num_cached} chunks already cached")
 
         return uncached_ranges
 
@@ -166,7 +175,9 @@ class KlineFetcher(object):
         period_end = self._get_valid_end()
 
         if period_start > self.start_time:
-            log.notice("First available kline starts on {from_ms_utc(period_start)}")
+            self.log.notice(
+                "First available kline starts on {from_ms_utc(period_start)}"
+            )
             if period_start >= period_end:
                 # No valid ranges due to later available start time, so return early
                 return []
@@ -203,22 +214,24 @@ class KlineFetcher(object):
         span = self.REQ_LIMIT * self.interval_ms
 
         if start and end:
-            log.info("Found start and end dates. Fetching full interval")
+            self.log.info("Found start and end dates. Fetching full interval")
             return start, end
 
         if start:
             # No end date, so go forward by 1000 intervals
-            log.notice(f"Found start date but no end: fetching {self.REQ_LIMIT} klines")
+            self.log.notice(
+                f"Found start date but no end: fetching {self.REQ_LIMIT} klines"
+            )
             end = start + span
         elif end:
             # No start date, so go back 1000 intervals
-            log.notice(
+            self.log.notice(
                 f"Found end date but no start. Fetching previous {self.REQ_LIMIT} klines"
             )
             start = end - span
         else:
             # Neither start nor end date. Get most recent 1000 intervals
-            log.notice(
+            self.log.notice(
                 f"Neither start nor end dates found. Fetching most recent {self.REQ_LIMIT} klines"
             )
             end = util.date_to_milliseconds("now")
@@ -226,7 +239,6 @@ class KlineFetcher(object):
 
         return start, end
 
-    @util.rate_limited(MAX_PER_SEC)
     def _fetch_chunks(self, chunk_range: Tuple[int, int]):
         start, end = chunk_range  # In milliseconds
 
