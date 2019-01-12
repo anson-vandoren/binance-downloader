@@ -62,6 +62,25 @@ class KlineFetcher(object):
 
         self.rate_limiter = util.rate_limited(max_per_second)
 
+    @property
+    def ohlcv(self):
+        if self.kline_df is None:
+            raise ValueError("Must call fetch_parallel() first")
+
+        ohlcv = self.kline_df[
+            :,
+            [
+                Kline.OPEN_TIME,
+                Kline.OPEN,
+                Kline.HIGH,
+                Kline.LOW,
+                Kline.CLOSE,
+                Kline.VOLUME,
+            ],
+        ]
+        return ohlcv.set_index(Kline.OPEN_TIME)
+
+
     def fetch_parallel(self) -> None:
         """Fetch klines in specified range from Binance API.
 

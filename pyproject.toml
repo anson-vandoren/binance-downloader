@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "binance-downloader"
-version = "0.2.0"
+version = "0.2.1"
 description = "CLI to download k-line (candlestick/OHLC) data from Binance API"
 authors = ["Anson VanDoren <anson.vandoren@gmail.com>"]
 license = "MIT"
