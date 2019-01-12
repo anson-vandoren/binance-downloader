@@ -30,6 +30,7 @@ from tqdm import tqdm
 from binance_downloader import binance_utils, db, util
 from binance_downloader.db import Kline
 
+pd.set_option('precision', 9)
 
 class KlineFetcher(object):
     """Convenience class to fetch all klines within a given range (in parallel)"""
@@ -52,7 +53,7 @@ class KlineFetcher(object):
             self.log = logger
 
         self.cache_file = cache_file
-        self.symbol = symbol.upper()
+        self.symbol = symbol.lower()
 
         if not interval or interval not in binance_utils.KLINE_INTERVALS:
             raise ValueError(f"'{interval}' not a valid Binance kline interval.")
@@ -72,7 +73,7 @@ class KlineFetcher(object):
         if self.kline_df is None:
             self.fetch_parallel()
 
-        ohlcv = self.kline_df[
+        ohlcv = self.kline_df.loc[
             :,
             [
                 Kline.OPEN_TIME,

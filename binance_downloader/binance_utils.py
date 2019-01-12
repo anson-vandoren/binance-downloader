@@ -256,6 +256,7 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
                 f"{util.from_ms_utc(timestamp)}"
             )
             return timestamp
+    prev_json = {}
     log.info(f"No cached earliest timestamp for {identifier}, so fetching from server")
 
     # This will return the first recorded k-line for this interval and symbol
