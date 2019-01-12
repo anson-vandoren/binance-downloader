@@ -44,9 +44,14 @@ class KlineFetcher(object):
         end_date,
         logger=None,
         max_per_second=1,
+        cache_file=None,
     ):
         if logger is None:
             self.log = Logger(__name__.split(".", 1)[-1])
+        else:
+            self.log = logger
+
+        self.cache_file = cache_file
         self.symbol = symbol
 
         if not interval or interval not in binance_utils.KLINE_INTERVALS:
@@ -63,9 +68,9 @@ class KlineFetcher(object):
         self.rate_limiter = util.rate_limited(max_per_second)
 
     @property
-    def ohlcv(self):
+    def ohlcv(self) -> pd.DataFrame:
         if self.kline_df is None:
-            raise ValueError("Must call fetch_parallel() first")
+            self.fetch_parallel()
 
         ohlcv = self.kline_df[
             :,
@@ -80,8 +85,7 @@ class KlineFetcher(object):
         ]
         return ohlcv.set_index(Kline.OPEN_TIME)
 
-
-    def fetch_parallel(self) -> None:
+    def fetch_parallel(self) -> Optional[pd.DataFrame]:
         """Fetch klines in specified range from Binance API.
 
         Splits the requested range up into chunks and processes them in parallel, while
@@ -130,9 +134,12 @@ class KlineFetcher(object):
         )
 
         self.log.info(f"Download complete for {len(self.kline_df)} klines from API")
+        return self.kline_df
 
     def write_to_csv(self):
         """Write k-lines retrieved from Binance into a csv file"""
+        if self.cache_file is None:
+            raise ValueError("No cache file given, cannot write CSV")
 
         data_frame = db.range_from_hdf(
             self.symbol, self.interval, self.start_time, self.end_time
@@ -151,6 +158,8 @@ class KlineFetcher(object):
         Future calls for same data will be retrieved from cache instead of making an
         unneeded call to the API.
         """
+        if self.cache_file is None:
+            raise ValueError("No cache file given, cannot write to HDF")
 
         if self.kline_df is None or self.kline_df.empty:
             self.log.notice("Not writing to .h5 since no data was received from API")
@@ -159,6 +168,8 @@ class KlineFetcher(object):
         db.to_hdf(self.kline_df, self.symbol, self.interval)
 
     def _uncached_ranges(self, desired_ranges):
+        if self.cache_file is None:
+            return desired_ranges
 
         cached_df = db.from_hdf(self.symbol, self.interval)
 

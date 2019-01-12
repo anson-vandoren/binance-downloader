@@ -24,7 +24,7 @@ import sys
 from logbook import StreamHandler, TimedRotatingFileHandler
 from .util import ensure_dir
 
-__version__ = "0.3"
+__version__ = "0.2.1"
 
 # Log to file (date-based)
 LOG_FILENAME = "./logs/bd_applog.log"
