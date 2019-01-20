@@ -24,7 +24,7 @@ import argparse
 
 from logbook import Logger
 
-from binance_downloader import api, util, binance_utils
+from binance_downloader import api, util
 
 log = Logger(__name__.split(".", 1)[-1])
 
@@ -80,10 +80,7 @@ def main():
 
     symbol = str(args.symbol)
     interval = str(args.interval)
-    max_per_second = binance_utils.max_request_freq(1)
-    binance = api.KlineFetcher(
-        interval, symbol, start_date, end_date, max_per_second=max_per_second
-    )
+    binance = api.KlineFetcher(interval, symbol, start_date, end_date)
     binance.fetch_parallel()
     binance.write_to_hdf()
     binance.write_to_csv()
