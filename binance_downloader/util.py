@@ -89,7 +89,7 @@ def json_from_cache(file_name: str) -> Optional[Dict]:
         with open(json_path, "r") as cache_file:
             return json.load(cache_file)
     except IOError:
-        log.notice(f"Error reading JSON from {json_path}")
+        log.notice(f"Could not read JSON from {json_path}")
         return None
 
 

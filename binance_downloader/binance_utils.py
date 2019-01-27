@@ -246,7 +246,7 @@ def earliest_valid_timestamp(symbol: str, interval: str) -> int:
 
     # Check for locally cached response
     identifier = f"{symbol}_{interval}"
-    prev_json = util.json_from_cache(EARLIEST_TIMESTAMPS_FILE)
+    prev_json = util.json_from_cache(EARLIEST_TIMESTAMPS_FILE) or {}
     if prev_json:
         # Loaded JSON from disk, check if we already have this value:
         timestamp = prev_json.get(identifier, None)
