@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "binance-downloader"
-version = "0.2.4"
+version = "0.2.5"
 description = "CLI to download k-line (candlestick/OHLC) data from Binance API"
 authors = ["Anson VanDoren <anson.vandoren@gmail.com>"]
 license = "MIT"
@@ -25,13 +25,13 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.5"
-pandas = "^0.23"
-requests = "^2.21"
-tqdm = "^4.28"
-logbook = "^1.4"
-tables = "^3.4"
-dateparser = "^0.7.0"
+python = ">=3.6.1"
+pandas = "~=1.1.0"
+requests = ">=2.21"
+tqdm = ">=4"
+logbook = ">=1"
+tables = ">=3"
+dateparser = ">=0.7"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.2"
